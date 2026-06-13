@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space & Venue - Plataforma de Alquileres Temporales</title>
+    <link rel="stylesheet" href="assets/css/variables.css">
+    <link rel="stylesheet" href="assets/css/layout.css">
+    <link rel="stylesheet" href="assets/css/components.css">
+</head>
+<body>
+
+    <!-- COMPONENTE GLOBAL: HEADER Y NAVEGACIÓN -->
+    <header class="main-header">
+        <div class="logo-area">
+            <h1 id="brand-title">Space & Venue Platform</h1>
+            <span id="user-info" class="user-badge" style="display: none;"></span>
+        </div>
+        <nav id="main-nav" class="nav-links">
+            <button class="nav-btn" data-view="view-spaces">Explorar Espacios</button>
+            <button id="nav-login" class="nav-btn" data-view="view-auth">Iniciar Sesión</button>
+            <button id="nav-my-reservations" class="nav-btn" data-view="view-reservations" style="display:none;">Mis Alquileres</button>
+            <button id="nav-owner-spaces" class="nav-btn" data-view="view-owner-spaces" style="display:none;">Mis Salones (Owner)</button>
+            <button id="nav-admin" class="nav-btn nav-btn-admin" data-view="view-admin" style="display:none;">Panel Admin</button>
+            <button id="nav-logout" class="nav-btn btn-danger" style="display:none;">Cerrar Sesión</button>
+        </nav>
+    </header>
+
+    <!-- CONTENEDOR PRINCIPAL DE VISTAS DINÁMICAS -->
+    <main class="container">
+
+        <!-- VISTA 1: AUTENTICACIÓN (LOGIN / REGISTRO) -->
+        <section id="view-auth" class="view-section active-view">
+            <div class="auth-grid">
+                <div class="auth-card">
+                    <h2>Ingresar al Sistema</h2>
+                    <p class="endpoint-label">POST /api/auth/login</p>
+                    <form id="form-login">
+                        <div class="form-group">
+                            <label for="login-username">Nombre de Usuario</label>
+                            <input type="text" id="login-username" required value="cliente_prueba">
+                        </div>
+                        <div class="form-group">
+                            <label for="login-password">Contraseña</label>
+                            <input type="password" id="login-password" required value="password123">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+                    </form>
+                </div>
+
+                <div class="auth-card">
+                    <h2>Registro de Nuevo Cliente</h2>
+                    <p class="endpoint-label">POST /api/auth/register</p>
+                    <form id="form-register">
+                        <div class="form-group">
+                            <label for="reg-username">Escribe un Username</label>
+                            <input type="text" id="reg-username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-password">Contraseña Segura</label>
+                            <input type="password" id="reg-password" required>
+                        </div>
+                        <button type="submit" class="btn btn-success">Registrar Cuenta</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISTA 2: PÚBLICA - CATÁLOGO DE ESPACIOS -->
+        <section id="view-spaces" class="view-section">
+            <div class="section-header">
+                <h2>Espacios Disponibles en la Plataforma</h2>
+                <button class="btn btn-primary" id="btn-refresh-catalog">Refrescar Catálogo</button>
+            </div>
+            <p class="endpoint-label">GET /api/spaces</p>
+            <div id="spaces-list" class="grid-container">
+                <p class="placeholder-text">Presiona el botón para cargar el catálogo dinámico desde el servidor.</p>
+            </div>
+        </section>
+
+        <!-- VISTA 3: CLIENTE - REGISTRO DE RESERVAS Y HISTORIAL -->
+        <section id="view-reservations" class="view-section">
+            <h2>Gestión de Mis Alquileres Salientes</h2>
+            
+            <div class="card-form-wrapper">
+                <h3>Solicitar Nueva Reserva</h3>
+                <p class="endpoint-label">POST /api/reservations</p>
+                <form id="form-create-reservation">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="res-space-id">ID de Salón/Espacio</label>
+                            <input type="number" id="res-space-id" required placeholder="Ej: 1">
+                        </div>
+                        <div class="form-group">
+                            <label for="res-from">Fecha y Hora Desde</label>
+                            <input type="datetime-local" id="res-from" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="res-to">Fecha y Hora Hasta</label>
+                            <input type="datetime-local" id="res-to" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success">Confirmar Solicitud de Reserva</button>
+                </form>
+            </div>
+
+            <div class="section-header" style="margin-top: 30px;">
+                <h3>Historial y Estado de Solicitudes</h3>
+                <button class="btn btn-secondary" id="btn-refresh-reservations">Actualizar Mis Alquileres</button>
+            </div>
+            <p class="endpoint-label">GET /api/reservations</p>
+            <div class="table-responsive">
+                <table id="table-reservations">
+                    <thead>
+                        <tr>
+                            <th>ID Reserva</th>
+                            <th>Ubicación / Salón</th>
+                            <th>Estado de Gestión</th>
+                            <th>Operaciones de Negocio</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reservations-tbody">
+                        <tr><td colspan="4" class="text-center">Inicia sesión para auditar tus solicitudes asociadas.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- VISTA 4: PROPIETARIO (OWNER) - ALTA Y CONTROL DE ESPACIOS PROPIOS -->
+        <section id="view-owner-spaces" class="view-section">
+            <h2>Módulo del Oferente / Propietario</h2>
+            <p class="endpoint-label">GET /api/spaces/ownedspaces</p>
+            
+            <div class="card-form-wrapper">
+                <h3>Publicar un Nuevo Espacio Comercial</h3>
+                <p class="endpoint-label">POST /api/spaces/ownedspace</p>
+                <form id="form-create-space">
+                    <div class="form-group">
+                        <label for="space-title">Nombre Comercial de la Locación</label>
+                        <input type="text" id="space-title" required placeholder="Ej: Complejo Sky Pavilion Premium">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Dar de Alta Propiedad</button>
+                </form>
+            </div>
+
+            <div class="section-header" style="margin-top: 30px;">
+                <h3>Tus Salones Registrados</h3>
+                <button class="btn btn-secondary" id="btn-refresh-owner-spaces">Refrescar Mis Locaciones</button>
+            </div>
+            <div id="owner-spaces-list" class="grid-container"></div>
+        </section>
+
+        <!-- VISTA 5: ADMINISTRADOR - AUDITORÍA GLOBAL Y INYECTOR WEBHOOK -->
+        <section id="view-admin" class="view-section">
+            <h2>Módulo de Supervisión Central (ROLE_ADMIN)</h2>
+            
+            <div class="admin-grid">
+                <div class="admin-card">
+                    <h3>Usuarios del Sistema (Consumidores)</h3>
+                    <p class="endpoint-label">GET /api/usuarios</p>
+                    <button class="btn btn-danger" id="btn-admin-list-users">Listar Cuentas Registradas</button>
+                    <ul id="admin-users-list" class="styled-list"></ul>
+                </div>
+                
+                <div class="admin-card">
+                    <h3>Simulador Event-Driven: Webhook Mercado Pago</h3>
+                    <p class="endpoint-label">POST /api/v1/payments/webhook</p>
+                    <p class="card-desc">Emula el evento asíncrono e instantáneo que Mercado Pago envía al servidor backend una vez procesado el dinero en la pasarela externa.</p>
+                    <div class="form-group">
+                        <label for="webhook-payment-id">ID de Transacción Simulado</label>
+                        <input type="number" id="webhook-payment-id" value="999888777">
+                    </div>
+                    <button class="btn btn-success" id="btn-trigger-webhook">Inyectar Notificación Externa (Approved)</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- COMPONENTE FIJO: CONSOLA DE AUDITORÍA DE RED -->
+        <section class="console-wrapper">
+            <div class="console-header">
+                <h4>Consola de Red & Trazas HTTP Activas</h4>
+                <span class="console-badge">Live API Tracker</span>
+            </div>
+            <div id="console-output" class="console-box">Esperando interacciones de red con el ecosistema de Spring Boot...</div>
+        </section>
+
+    </main>
+
+    <!-- ARQUITECTURA JS DEL CLIENTE: SEPARACIÓN DE RESPONSABILIDADES -->
+    <script src="js/config.js"></script>
+    <script src="js/utils/ui.js"></script>
+    <script src="js/services/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
