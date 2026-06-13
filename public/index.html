@@ -22,6 +22,7 @@
             <button id="nav-my-reservations" class="nav-btn" data-view="view-reservations" style="display:none;">Mis Alquileres</button>
             <button id="nav-owner-spaces" class="nav-btn" data-view="view-owner-spaces" style="display:none;">Mis Salones (Owner)</button>
             <button id="nav-admin" class="nav-btn nav-btn-admin" data-view="view-admin" style="display:none;">Panel Admin</button>
+            <button id="nav-notifications" class="nav-btn" data-view="view-notifications" style="display:none;">🔔 Alertas <span id="notif-badge" class="badge" style="display:none; background:red; color:white; padding:2px 6px; border-radius:50%; font-size:0.75rem;">0</span></button>
             <button id="nav-logout" class="nav-btn btn-danger" style="display:none;">Cerrar Sesión</button>
         </nav>
     </header>
@@ -171,6 +172,17 @@
                         <input type="number" id="webhook-payment-id" value="999888777">
                     </div>
                     <button class="btn btn-success" id="btn-trigger-webhook">Inyectar Notificación Externa (Approved)</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISTA 6: NOTIFICACIONES -->
+        <section id="view-notifications" class="view-section">
+            <h2>🔔 Historial de Alertas y Notificaciones del Sistema</h2>
+            <p class="endpoint-label">GET /api/usuarios/me/notificaciones</p>
+            <div class="card-form-wrapper" style="background: var(--bg-card);">
+                <div id="notifications-list">
+                    <p class="placeholder-text">No tienes alertas o notificaciones registradas en este momento.</p>
                 </div>
             </div>
         </section>
