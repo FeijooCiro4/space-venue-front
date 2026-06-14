@@ -93,26 +93,42 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // 2. Corrección del Formulario de Registro en app.js
+    // 2. Formulario de Registro(Adaptado a RegistroDTO Record)
     document.getElementById("form-register").addEventListener("submit", async (e) => {
-        e.preventDefault(); 
-        const usernameInput = document.getElementById("reg-username").value.trim();
-        const passwordInput = document.getElementById("reg-password").value;
+        e.preventDefault();
+
+        // 1. Capturamos los valores de la pantalla
+        const firstname = document.getElementById("reg-firstname").value.trim();
+        const lastname = document.getElementById("reg-lastname").value.trim();
+        const email = document.getElementById("reg-email").value.trim();
+        const phone = document.getElementById("reg-phone").value.trim();
+        const username = document.getElementById("reg-username").value.trim();
+        const password = document.getElementById("reg-password").value;
+
+        // 2. Estructuramos el JSON PLANO que machea con los componentes del Record
+        const registroPayload = {
+            firstname: firstname,
+            lastname: lastname,
+            email: email,
+            phone: phone,
+            username: username,
+            password: password
+        };
 
         try {
-            console.log("Enviando Registro Nativo para:", usernameInput);
+            console.log("Enviando Registro con Record DTO para:", username);
 
             const response = await fetch('https://space-venue-api.onrender.com/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: usernameInput, password: passwordInput })
+                body: JSON.stringify(registroPayload) // Se envía plano
             });
 
             const data = await response.text();
             console.log("Respuesta del servidor al registro:", data);
 
             if (response.ok) {
-                alert(`¡Usuario registrado con éxito!: ${data}`);
+                alert("¡Usuario y perfil registrados con éxito!");
                 document.getElementById("form-register").reset();
             } else {
                 alert("Error del backend al registrar: " + data);
