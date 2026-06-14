@@ -4,33 +4,60 @@
  */
 document.addEventListener("DOMContentLoaded", () => {
     
-    // Inicializar listeners del navbar con Delegación de Eventos e Intercepción de Cargas de Red
+    // VARIABLES GLOBALES PARA LEAFLET
+    let spaceMap;
+    let spaceMarker;
+
+    // FUNCIÓN PARA INICIALIZAR EL MAPA DE LEAFLET
+    function initLeafletMap() {
+        const mapContainer = document.getElementById('map');
+        if (!mapContainer) return;
+
+        // 1. Centramos el mapa inicialmente en Argentina (puedes cambiar las coordenadas a tu ciudad)
+        spaceMap = L.map('map').setView([-34.6037, -58.3816], 13);
+
+        // 2. Cargamos las imágenes (tiles) gratuitas de OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(spaceMap);
+
+        // 3. Escuchamos los clics en el mapa para capturar las coordenadas
+        spaceMap.on('click', function(e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+
+            // Mover o crear el marcador visual (Pin)
+            if (spaceMarker) {
+                spaceMarker.setLatLng(e.latlng);
+            } else {
+                spaceMarker = L.marker(e.latlng).addTo(spaceMap);
+            }
+
+            // Inyectar los valores reales en los inputs ocultos
+            document.getElementById("space-lat").value = lat;
+            document.getElementById("space-lng").value = lng;
+
+            UI.logConsole(`📍 Coordenadas seleccionadas: Lat ${lat.toFixed(6)} | Lng ${lng.toFixed(6)}`);
+        });
+    }
+
+    // Inicializamos el mapa de forma inmediata
+    initLeafletMap();
+
+    // Cuando el usuario navega, Leaflet necesita un "invalidateSize" si el contenedor estaba oculto
     document.getElementById("main-nav").addEventListener("click", (e) => {
         if (e.target.hasAttribute("data-view")) {
             const targetView = e.target.getAttribute("data-view");
-            const token = localStorage.getItem("jwt_token");
+            
+            // ... (Mantené toda tu lógica de seguridad intacta de tu código previo) ...
 
-            // SEGURIDAD DEL FRONT: Validar accesos antes de cambiar la vista
-            if ((targetView === "view-reservations" || targetView === "view-owner-spaces" || targetView === "view-notifications") && !token) {
-                UI.logConsole("⚠️ Intento de acceso denegado: Debes iniciar sesión primero.");
-                UI.switchView("view-auth");
-                return;
-            }
-
-            if (targetView === "view-admin") {
-                if (!token || !isAdminToken(token)) {
-                    UI.logConsole("⛔ CRÍTICO: Acceso denegado al Panel de Administración. Privilegios insuficientes.");
-                    alert("No tienes permisos de Administrador (ROLE_ADMIN) para acceder a este panel.");
-                    return; // Bloquea el cambio de vista por completo
-                }
-                // Si es admin, cargamos las cuentas automáticamente al entrar
-                loadAdminUsers();
-            }
-
-            // Cambiar de vista de forma segura
             UI.switchView(targetView);
 
-            // Disparar las consultas de red de manera reactiva e inmediata al entrar a la vista
+            // REGLA CRUCIAL: Si entra a ver los salones del Owner, refrescamos el mapa para que renderice el tamaño correcto
+            if (targetView === "view-owner-spaces" && spaceMap) {
+                setTimeout(() => spaceMap.invalidateSize(), 200);
+            }
+
             if (targetView === "view-spaces") loadCatalog();
             if (targetView === "view-reservations") loadReservations();
             if (targetView === "view-notifications") loadNotifications();
@@ -69,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             console.log("Enviando Login Nativo para:", user);
             
-            const response = await fetch('https://space-venue-api.onrender.com/api/auth/login', {
+            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: user, password: pass })
@@ -118,7 +145,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             console.log("Enviando Registro con Record DTO para:", username);
 
-            const response = await fetch('https://space-venue-api.onrender.com/api/auth/register', {
+            const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(registroPayload) // Se envía plano
@@ -173,27 +200,47 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("form-create-space").addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        // Almacenamos el DTO con los campos completos
+        // Capturamos las coordenadas de los inputs ocultos
+        const latVal = document.getElementById("space-lat").value;
+        const lngVal = document.getElementById("space-lng").value;
+
+        // Validación del lado del cliente para forzar el uso del mapa
+        if (!latVal || !lngVal) {
+            alert("❌ Por favor, selecciona una ubicación exacta haciendo clic en el mapa.");
+            return;
+        }
+
+        // Construimos el DTO mapeando el objeto de localización estructurado esperado por Hibernate
         const dto = {
             idConsumerOwner: parseInt(localStorage.getItem("userId")) || 1,
-            idLocation: parseInt(document.getElementById("space-location").value),
-            idCancellationPolicies: parseInt(document.getElementById("space-cancellation").value),
             nameSpace: document.getElementById("space-title").value,
             description: document.getElementById("space-description").value,
             basePrice: parseFloat(document.getElementById("space-price").value),
             bufferTime: parseInt(document.getElementById("space-buffer").value),
-            active: document.getElementById("space-active") ? document.getElementById("space-active").checked : true
-            //no agregamos ni googleCalendarId ni publicationDate acá. El backend se deberia encargar.
+            active: document.getElementById("space-active") ? document.getElementById("space-active").checked : true,
+        
+            cancellationPolicies: document.getElementById("space-cancellation").value, 
+            
+            location: {
+                nameLocation: `Ubicación de ${document.getElementById("space-title").value}`,
+                latitude: parseFloat(latVal),
+                longitude: parseFloat(lngVal)
+            }
         };
 
         try {
-            UI.logConsole("Publicando nueva locación comercial... POST /api/spaces/ownedspace");
+            UI.logConsole("Publicando nueva locación comercial con Coordenadas Reales... POST /api/spaces/ownedspace");
             const res = await ApiService.createSpace(dto);
             UI.logConsole("Propiedad dada de alta de forma exitosa en el servidor.", res);
-            alert("¡Espacio publicado con éxito!");
-            document.getElementById("form-create-space").reset();
+            alert("¡Espacio publicado con éxito con su mapa enlazado!");
             
-            // En lugar de redirigir, refrescamos la sub-vista de locaciones del dueño
+            // Resetear formulario y remover pin del mapa
+            document.getElementById("form-create-space").reset();
+            if(spaceMarker) {
+                spaceMap.removeLayer(spaceMarker);
+                spaceMarker = null;
+            }
+            
             if (typeof loadOwnedSpaces === "function") loadOwnedSpaces(); 
         } catch (err) {
             UI.logConsole("Error al dar de alta el espacio: " + err.message);

@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Space & Venue - Plataforma de Alquileres Temporales</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <link rel="stylesheet" href="assets/css/variables.css">
     <link rel="stylesheet" href="assets/css/layout.css">
     <link rel="stylesheet" href="assets/css/components.css">
@@ -170,14 +174,25 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="space-location">ID de Locación (Ubicación)</label>
-                        <input type="number" id="space-location" min="1" required placeholder="Ej: 1">
+                        <label style="font-weight: bold; margin-bottom: 8px; display: block;">Ubicación geográfica del salón</label>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0; margin-bottom: 8px;">
+                            Hacé clic en el mapa para marcar el punto exacto donde se encuentra tu espacio.
+                        </p>
+                        
+                        <div id="map" style="width: 100%; height: 320px; border-radius: 6px; border: 1px solid #ccc; margin-bottom: 15px; z-index: 1;"></div>
+                        
+                        <input type="hidden" id="space-lat">
+                        <input type="hidden" id="space-lng">
                     </div>
 
-                    <!--Las opciones deberian poder elejirse por un nobre(?) O poner un texto que diga cual es cual por id-->
                     <div class="form-group">
-                        <label for="space-cancellation">ID de Política de Cancelación</label>
-                        <input type="number" id="space-cancellation" min="1" required placeholder="Ej: 1">
+                        <label for="space-cancellation">Política de Cancelación</label>
+                        <select id="space-cancellation" class="form-control" required>
+                            <option value="" disabled selected>-- Seleccioná una política --</option>
+                            <option value="FLEXIBLE">Flexible (Cancelación gratuita)</option>
+                            <option value="MODERATED">Moderada (Reembolso parcial)</option>
+                            <option value="STRICT">Estricta (Sin reembolso)</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
