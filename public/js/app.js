@@ -428,8 +428,8 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         try {
-            // IMPORTANTE: Revisá que tu API_BASE_URL esté bien definida en config.js
-            const response = await fetch(`http://localhost:8080/api/comments`, { // Cambiá esto si tu URL es otra
+            // Usamos backticks (comillas invertidas) para poder insertar la variable
+            const response = await fetch(`${API_BASE_URL}/api/comments`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
