@@ -196,14 +196,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 3. Catálogo de Espacios
     document.getElementById("btn-refresh-catalog").addEventListener("click", loadCatalog);
-    
+
     async function loadCatalog() {
         try {
             const spaces = await ApiService.getSpaces();
             UI.logConsole("Catálogo obtenido desde el servidor backend", spaces);
             const container = document.getElementById("spaces-list");
             container.innerHTML = "";
-            
+
             if(!spaces.length) {
                 container.innerHTML = "<p class='placeholder-text'>No se registran salones activos.</p>";
                 return;
@@ -212,12 +212,28 @@ document.addEventListener("DOMContentLoaded", () => {
             spaces.forEach(s => {
                 const card = document.createElement("div");
                 card.className = "card";
+
+                // 1. Guardamos el ID en una variable para que el HTML quede más limpio
+                const idDelEspacio = s.idSpace || s.id;
+
+                // 2. Armamos la tarjeta agregando la sección de comentarios al final
                 card.innerHTML = `
-                    <h4>${s.nameSpace || s.title || 'Salón Comercial'}</h4>
-                    <p style="color: var(--text-muted)">ID de Salón: ${s.idSpace || s.id}</p>
-                    <p><strong>Precio Base:</strong> $${s.basePrice || s.price || '0.00'}</p>
-                    <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="selectForReservation(${s.idSpace || s.id})">Reservar Este Espacio</button>
-                `;
+                <h4>${s.nameSpace || s.title || 'Salón Comercial'}</h4>
+                <p style="color: var(--text-muted)">ID de Salón: ${idDelEspacio}</p>
+                <p><strong>Precio Base:</strong> $${s.basePrice || s.price || '0.00'}</p>
+                <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="selectForReservation(${idDelEspacio})">Reservar Este Espacio</button>
+                
+                <button class="btn btn-outline-info w-100 mt-2" onclick="toggleComentarios(${idDelEspacio})">
+                    Ver Reseñas del Espacio
+                </button>
+
+                <div id="seccion-lista-comentarios-${idDelEspacio}" class="mt-3 p-3 border rounded bg-light" style="display: none;">
+                    <h6 class="text-center mb-3">Reseñas de Usuarios</h6>
+                    <div id="contenedor-comentarios-${idDelEspacio}">
+                        <div class="text-center text-muted">Cargando comentarios...</div>
+                    </div>
+                </div>
+            `;
                 container.appendChild(card);
             });
         } catch (err) {
@@ -441,7 +457,71 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-// 4 CONEXIÓN CON LA API
+    //Window para el toggle de los comentarios de un espacio
+    window.toggleComentarios = async function(idSpace) {
+        const seccion = document.getElementById(`seccion-lista-comentarios-${idSpace}`);
+        const contenedor = document.getElementById(`contenedor-comentarios-${idSpace}`);
+
+        // Si ya está visible, lo ocultamos
+        if (seccion.style.display === "block") {
+            seccion.style.display = "none";
+            return;
+        }
+
+        // Lo mostramos con un spinner de carga
+        seccion.style.display = "block";
+        contenedor.innerHTML = `<div class="text-center text-muted"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Cargando...</div>`;
+
+        try {
+            // AJUSTE 1: Llamamos a tu endpoint exacto
+            // Usamos API_BASE_URL (ej: http://localhost:8080) asegurando la ruta correcta
+            const response = await fetch(`${API_BASE_URL}/api/comments/byspaceid/${idSpace}`);
+
+            if (!response.ok) throw new Error("Error al obtener los comentarios");
+
+            // Al devolver List<Comment>, recibimos un array de objetos directamente
+            const comentarios = await response.json();
+
+            if (!comentarios || comentarios.length === 0) {
+                contenedor.innerHTML = `<p class="text-center text-muted mb-0 small">Todavía no hay reseñas para este espacio.</p>`;
+                return;
+            }
+
+            let htmlComentarios = "";
+            comentarios.forEach(c => {
+                // Generamos las estrellas (c.score)
+                const scoreNum = c.score || 0;
+                const estrellas = "⭐".repeat(scoreNum) + "☆".repeat(5 - scoreNum);
+
+                // AJUSTE 2: Mapeamos la fecha según el nombre de atributo de tu Entidad Comment
+                // Cubrimos opciones por si se llama createdAt, created_at o date
+                const fechaOriginal = c.createdAt || c.created_at || c.date;
+                const fecha = fechaOriginal ? new Date(fechaOriginal).toLocaleDateString() : 'Sin fecha';
+
+                // Si tu Entidad Comment trae el objeto Consumer, podrías poner el nombre del usuario
+                // cambiando "Usuario anónimo" por algo como: c.consumer ? c.consumer.name : 'Usuario'
+                htmlComentarios += `
+                <div class="card mb-2 border-0 shadow-sm" style="background-color: #f8f9fa;">
+                    <div class="card-body p-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-warning" style="font-size: 0.9rem;">${estrellas}</span>
+                            <small class="text-muted" style="font-size: 0.75rem;">${fecha}</small>
+                        </div>
+                        <p class="card-text mb-0" style="font-size: 0.85rem; font-style: italic;">"${c.description}"</p>
+                    </div>
+                </div>
+            `;
+            });
+
+            contenedor.innerHTML = htmlComentarios;
+
+        } catch (err) {
+            console.error("Error cargando comentarios:", err);
+            contenedor.innerHTML = `<p class="text-center text-danger mb-0 small">No se pudieron cargar las reseñas.</p>`;
+        }
+    };
+
+
     async function fetchFilteredSpaces(dto) {
         const container = document.getElementById("spaces-list");
         container.innerHTML = "<p class='text-muted'>Filtrando espacios...</p>";
