@@ -76,8 +76,14 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("nav-logout").addEventListener("click", () => {
         localStorage.removeItem("jwt_token");
         UI.updateNavbar(null);
+
         // Ocultar dinámicamente el botón de notificaciones añadido
-        document.getElementById("nav-notifications").style.display = "none";
+        const badge = document.getElementById("notif-badge");
+        if (badge) {
+            badge.innerText = "";
+            badge.style.display = "none";
+        }
+
         gestionarNavegacionPorRol();
         UI.logConsole("Sesión destruida y credenciales revocadas del almacenamiento local.");
         UI.switchView("view-auth");
@@ -88,12 +94,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (savedToken) {
         UI.updateNavbar(savedToken);
         gestionarNavegacionPorRol();
-        // Mostrar botón de notificaciones si hay sesión
-        document.getElementById("nav-notifications").style.display = "inline-block";
         UI.logConsole("Token JWT detectado de una sesión previa activa. Sincronizando estado...");
         
-        // Cargar globo de alertas si tu endpoint lo permite o inicializar llamadas en segundo plano
+        // SOLUCIÓN: Si está logueado va al catálogo, NO a la pantalla de Auth/Login
+        UI.switchView("view-spaces"); 
+        loadCatalog();
         loadUnreadNotificationsCount();
+    } else {
+        // Si no hay sesión, limpiamos todo y lo mandamos al login de forma limpia
+        localStorage.clear();
+        UI.updateNavbar(null);
+        gestionarNavegacionPorRol();
+        UI.switchView("view-auth");
     }
 
     // ====== FORMULARIOS & ACCIONES EVENT DRIVEN ======
@@ -119,8 +131,11 @@ document.addEventListener("DOMContentLoaded", () => {
             if (response.ok && data.includes("Bearer")) {
                 const token = data.replace("Bearer ", "").trim();
                 localStorage.setItem("jwt_token", token);
+
                 UI.updateNavbar(token);
                 gestionarNavegacionPorRol();
+                loadUnreadNotificationsCount();
+
                 alert("¡Login exitoso!");
                 UI.switchView("view-spaces");
                 loadCatalog();
@@ -519,8 +534,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // CORRECCIÓN INCONSISTENCIA 5: Carga del Historial de Alertas / Notificaciones
     async function loadNotifications() {
         try {
-            UI.logConsole("Solicitando historial de alertas: GET /api/usuarios/me/notificaciones");
-            const notifications = await ApiService.get("/api/usuarios/me/notificaciones");
+            UI.logConsole("Solicitando historial de alertas: GET /api/notifications");
+            const notifications = await ApiService.get("/api/notifications");
             const container = document.getElementById("notifications-list");
             container.innerHTML = "";
 
@@ -548,18 +563,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Función auxiliar para leer cuántas notificaciones no leídas tiene el usuario (Globo rojo del Navbar)
     async function loadUnreadNotificationsCount() {
+        if (!localStorage.getItem("jwt_token")) {
+            console.warn("⚠️ loadUnreadNotificationsCount: No se ejecuta porque no hay token en localStorage.");
+            return;
+        }
+
         try {
-            // Requisitos especifican endpoint para contar alertas pendientes
-            const data = await ApiService.get("/api/notificaciones/unread-count");
+            console.log("🚀 Disparando conteo de alertas a: /api/notifications");
+            const data = await ApiService.get("/api/notifications");       
+
+            console.log("📦 Datos recibidos del Backend:", data);
+
             const badge = document.getElementById("notif-badge");
-            if (data && data.count > 0) {
-                badge.innerText = data.count;
-                badge.style.display = "inline-block";
+            if (!badge) {
+                console.error("❌ No se encontró el elemento HTML con id 'notif-badge' en la barra de navegación.");
+                return;
+            }
+
+            const count = (data && typeof data === 'object') ? data.count : parseInt(data);
+
+            if (count > 0) {
+                badge.innerText = count;
+                badge.style.display = "inline-block"; 
             } else {
-                badge.style.display = "none";
+                badge.innerText = "";
+                badge.style.display = "none"; 
+            }
+
+            // Validamos la estructura del JSON que devuelve tu Spring Boot
+            if (data && (data.count > 0 || data.count === 0)) {
+                if (data.count > 0) {
+                    badge.innerText = data.count;
+                    badge.style.display = "inline-block";
+                    console.log(`🔴 Globo de alertas activado con ${data.count} notificaciones.`);
+                } else {
+                    badge.innerText = "";
+                    badge.style.display = "none";
+                    console.log("⚪ El conteo de alertas dio 0. El globo permanece oculto.");
+                }
+            } else {
+                console.error("❌ Estructura inesperada del Backend. Se esperaba un objeto con la propiedad 'count'. Recibido:", data);
             }
         } catch (e) {
-            // Fallback silencioso si el conteo no está completamente implementado en BD
+            console.error("🚨 Fallo crítico en la petición de alertas al servidor backend:", e);
         }
     }
 
