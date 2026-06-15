@@ -694,17 +694,30 @@ document.addEventListener("DOMContentLoaded", () => {
     // ====== WEBHOOK SIMULATION ======
     document.getElementById("btn-trigger-webhook").addEventListener("click", async () => {
         const payId = document.getElementById("webhook-payment-id").value;
+        
+        // Le pedimos al administrador el ID de la reserva que quiere aprobar
+        const resId = prompt("Ingrese el ID de la Reserva (TENTATIVE) que desea simular como PAGADA:");
+        if (!resId) return;
+
         const payload = {
             type: "payment",
+            isSimulation: true,      // FLAG CLAVE para que el Back sepa que no debe ir a MP
+            reservationId: resId,    // Le pasamos qué reserva queremos impactar
             data: { id: payId.toString() }
         };
 
         try {
-            UI.logConsole("Inyectando notificación asíncrona de pasarela...");
-            const status = await ApiService.simulateWebhook(payload);
-            UI.logConsole("Webhook respondido por el Backend Server. Status 200 OK. Estado mutado asíncronamente en BD.", status);
+            UI.logConsole(`Inyectando notificación de pago aprobado para la Reserva #${resId}...`);
+            
+            // Ejecutamos el llamado al controlador de Webhooks
+            const status = await ApiService.post("/api/v1/payments/webhook", payload);
+            
+            UI.logConsole("¡Simulación completada! Revisa el historial de alquileres, la reserva ahora debe figurar como CONFIRMED.", status);
+            
+            // Opcional: recargar las tablas si estás parado en ellas
+            if (typeof loadReservations === "function") loadReservations();
         } catch (err) {
-            UI.logConsole("Fallo al propagar webhook: " + err.message);
+            UI.logConsole("Fallo al propagar el webhook simulado: " + err.message);
         }
     });
 });
