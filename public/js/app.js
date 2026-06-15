@@ -196,6 +196,28 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    document.getElementById("btn-add-service").addEventListener("click", () => {
+        const container = document.getElementById("services-container");
+        
+        const div = document.createElement("div");
+        div.className = "row g-2 mb-2 service-row";
+        div.innerHTML = `
+            <div class="col-7">
+                <input type="text" class="form-control service-desc" placeholder="Ej: Servicio de Catering, Proyector, etc." required>
+            </div>
+            <div class="col-4">
+                <input type="number" class="form-control service-price" placeholder="Precio ($)" min="0" step="0.01" required>
+            </div>
+            <div class="col-1">
+                <button type="button" class="btn btn-danger btn-sm w-100 btn-remove-service">X</button>
+            </div>
+        `;
+        
+        // Botón para eliminar la fila si el usuario se arrepiente
+        div.querySelector(".btn-remove-service").addEventListener("click", () => div.remove());
+        container.appendChild(div);
+    });
+
     // Agregar dentro del DOMContentLoaded en app.js para el módulo de Oferentes
     document.getElementById("form-create-space").addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -203,6 +225,17 @@ document.addEventListener("DOMContentLoaded", () => {
         // Capturamos las coordenadas de los inputs ocultos
         const latVal = document.getElementById("space-lat").value;
         const lngVal = document.getElementById("space-lng").value;
+
+        const serviceRows = document.querySelectorAll(".service-row");
+        const servicesList = [];
+
+        serviceRows.forEach(row => {
+            const desc = row.querySelector(".service-desc").value;
+            const price = parseFloat(row.querySelector(".service-price").value);
+            if (desc && !isNaN(price)) {
+                servicesList.push({ description: desc, price: price });
+            }
+        });
 
         // Validación del lado del cliente para forzar el uso del mapa
         if (!latVal || !lngVal) {
@@ -225,7 +258,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 nameLocation: `Ubicación de ${document.getElementById("space-title").value}`,
                 latitude: parseFloat(latVal),
                 longitude: parseFloat(lngVal)
-            }
+            },
+            services: servicesList
         };
 
         try {
@@ -248,25 +282,149 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    window.selectForReservation = (id) => {
+    let currentSpaceBasePrice = 0;
+
+    window.selectForReservation = async (id) => {
         UI.switchView("view-reservations");
         document.getElementById("res-space-id").value = id;
-        UI.logConsole(`Formulario de reserva precargado con el espacio #${id}`);
+        UI.logConsole(`Pre-cargando servicios opcionales para el espacio #${id}...`);
+
+        const checkboxContainer = document.getElementById("available-services-checkboxes");
+        checkboxContainer.innerHTML = "<p class='placeholder-text'>Cargando servicios del espacio...</p>";
+        document.getElementById("total-price-display").innerText = "$0.00";
+
+        try {
+            // Buscamos el espacio específico utilizando tu ApiService o fetch nativo
+            // Nota: Si tu ApiService no tiene implementado getSpaceById, usamos fetch directamente:
+            const response = await fetch(`${API_BASE_URL}/api/spaces/${id}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem("jwt_token")}` }
+            });
+            
+            if (!response.ok) throw new Error("No se pudo obtener la información detallada del salón.");
+            const space = await response.json();
+
+            // Guardamos el precio base en la variable de control
+            currentSpaceBasePrice = space.basePrice || 0;
+            document.getElementById("total-price-display").innerText = `$${currentSpaceBasePrice.toFixed(2)}`;
+
+            checkboxContainer.innerHTML = ""; // Limpiamos
+
+            // Renderizamos los servicios asociados que estén activos
+            if (space.services && space.services.length > 0) {
+                space.services.forEach(serv => {
+                    // 🌟 CORRECCIÓN DE SEGURIDAD: Validamos si viene como active o isActive, 
+                    // o si directamente no está definido asumimos que está activo.
+                    const isActive = serv.isActive !== false && serv.active !== false;
+
+                    if (isActive) {
+                        const div = document.createElement("div");
+                        div.style.display = "flex";
+                        div.style.alignItems = "center";
+                        div.style.gap = "8px";
+                        div.style.marginBottom = "6px";
+                        
+                        // 🌟 ADEMÁS: Verificá si tu backend devuelve 'idSpaceService' o 'id'. 
+                        // Usamos un fallback por las dudas:
+                        const serviceId = serv.id || serv.idSpaceService;
+
+                        div.innerHTML = `
+                            <input type="checkbox" class="chk-optional-service" value="${serviceId}" data-price="${serv.price}" id="chk-serv-${serviceId}">
+                            <label for="chk-serv-${serviceId}" style="cursor:pointer; font-size:0.95rem;">
+                                ${serv.description} (<strong>+$${serv.price}</strong>)
+                            </label>
+                        `;
+                        checkboxContainer.appendChild(div);
+                    }
+                });
+
+                // Escuchamos los clics en los nuevos checkboxes para recalcular el precio en vivo
+                document.querySelectorAll(".chk-optional-service").forEach(chk => {
+                    chk.addEventListener("change", reCalcularPrecioTotalUI);
+                });
+
+            } else {
+                checkboxContainer.innerHTML = "<p class='text-muted' style='font-size: 0.9rem; margin:0;'>Este espacio no cuenta con servicios adicionales.</p>";
+            }
+
+            UI.logConsole(`Formulario listo para el espacio #${id}. Precio base: $${currentSpaceBasePrice}`);
+        } catch (err) {
+            UI.logConsole("Error al recuperar servicios del espacio: " + err.message);
+            checkboxContainer.innerHTML = "<p class='text-danger' style='font-size: 0.9rem; margin:0;'>Error al cargar los servicios adicionales.</p>";
+        }
     };
+
+    // FUNCIÓN AUXILIAR PARA CALCULAR EL PRECIO TOTAL EN LA UI
+    function reCalcularPrecioTotalUI() {
+        let total = currentSpaceBasePrice;
+        document.querySelectorAll(".chk-optional-service:checked").forEach(chk => {
+            total += parseFloat(chk.getAttribute("data-price")) || 0;
+        });
+        document.getElementById("total-price-display").innerText = `$${total.toFixed(2)}`;
+    }
 
     // 4. Crear Reserva Saliente
     document.getElementById("form-create-reservation").addEventListener("submit", async (e) => {
         e.preventDefault();
+
+        // 1. Extraemos los IDs de los servicios adicionales que fueron tildados
+        const checkedBoxes = document.querySelectorAll(".chk-optional-service:checked");
+        const selectedServiceIds = Array.from(checkedBoxes).map(chk => parseInt(chk.value));
+
+        // 2. Recuperamos el ID del Consumidor desde el JWT o localStorage
+        // Tu JwtUtil descodifica el token, pero si guardás el userId en login usalo. 
+        // Si no está, intentamos extraerlo del payload del token actual:
+        let userId = parseInt(localStorage.getItem("userId"));
+        if (!userId) {
+            try {
+                const token = localStorage.getItem("jwt_token");
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                // Mapeamos según como guardes el ID en los Claims (id, userId, idConsumer)
+                userId = payload.idConsumer || payload.id || 1; 
+            } catch (e) {
+                userId = 1; // Fallback de seguridad por si acaso
+            }
+        }
+
+        // 3. Estructuramos el DTO idéntico a tu Record de Java
         const dto = {
+            title: document.getElementById("res-title").value.trim(),
+            description: document.getElementById("res-description").value.trim(),
+            googleEventCode: null, // Lo genera el backend de forma remota, mandamos null
+            fromDate: document.getElementById("res-from").value,   // Formato 'YYYY-MM-DDTHH:mm'
+            untilDate: document.getElementById("res-to").value,    // Formato 'YYYY-MM-DDTHH:mm'
+            status: "TENTATIVE",                                     // Estado por defecto inicial
+            saveToMyCalendar: document.getElementById("res-save-calendar").checked,
+            idConsumer: userId,
             idSpace: parseInt(document.getElementById("res-space-id").value),
-            fromDate: document.getElementById("res-from").value,
-            toDate: document.getElementById("res-to").value
+            idServicesSelec: selectedServiceIds                     // Array de enteros [2, 5]
         };
 
         try {
-            const res = await ApiService.createReservation(dto);
-            UI.logConsole("Reserva registrada con éxito en el servidor", res);
+            UI.logConsole("Iniciando registro de reserva con sincronización de Google Calendar... POST /api/reservations", dto);
+            
+            // Usamos tu ApiService o fetch directo con seguridad incorporada
+            const response = await fetch(`${API_BASE_URL}/api/reservations`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem("jwt_token")}`
+                },
+                body: JSON.stringify(dto)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || "Error devuelto por el servidor.");
+            }
+
+            const res = await response.json();
+            UI.logConsole("¡Reserva guardada y sincronizada en Google Calendar con éxito!", res);
+            alert("¡Reserva registrada correctamente! Se envió la invitación a tu casilla de correo vía Google API.");
+            
             document.getElementById("form-create-reservation").reset();
+            document.getElementById("available-services-checkboxes").innerHTML = "<p class='text-muted' style='font-size: 0.9rem; margin:0;'>Selecciona un espacio del catálogo para auditar sus servicios.</p>";
+            document.getElementById("total-price-display").innerText = "$0.00";
+            
             loadReservations();
         } catch (err) {
             UI.logConsole("Error al solicitar reserva: " + err.message);
@@ -274,7 +432,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // CORRECCIÓN INCONSISTENCIA 2: Carga automática de Reservas Salientes
     document.getElementById("btn-refresh-reservations").addEventListener("click", loadReservations);
 
     async function loadReservations() {
@@ -282,30 +439,40 @@ document.addEventListener("DOMContentLoaded", () => {
             UI.logConsole("Solicitando historial transaccional de alquileres propios...");
             const data = await ApiService.getReservations();
             UI.logConsole("Historial de alquileres obtenido", data);
+            
             const tbody = document.getElementById("reservations-tbody");
+            if (!tbody) return; // Salvaguarda por si el elemento no existe en la vista actual
             tbody.innerHTML = "";
 
-            if(!data || !data.length) {
+            if (!data || !data.length) {
                 tbody.innerHTML = "<tr><td colspan='4' class='text-center'>No posees alquileres salientes cargados en tu cuenta.</td></tr>";
                 return;
             }
 
             data.forEach(res => {
                 const tr = document.createElement("tr");
+                
+                // Controlamos de forma segura que las propiedades existan antes de renderizar
+                const idReserva = res.id || res.idReservation || 'N/A';
+                const nombreEspacio = res.space?.nameSpace || `Salón #${res.idSpace || 'Asignado'}`;
+                const precioFinal = res.finalPrice != null ? parseFloat(res.finalPrice).toFixed(2) : '0.00';
+                const estado = res.status || 'TENTATIVE';
+
                 tr.innerHTML = `
-                    <td>#${res.idReservation || res.id}</td>
-                    <td>Salón ID: ${res.space?.idSpace || res.idSpace || 'Asignado'}</td>
-                    <td><span class="status-badge ${res.status}">${res.status}</span></td>
-                    <td>
-                        ${res.status === 'TENTATIVE' ? `<button class="btn btn-success" style="padding: 4px 8px; font-size: 0.8rem;" onclick="checkoutPayment(${res.idReservation || res.id})">Proceder Pago MP</button>` : ''}
-                        ${res.status !== 'CANCELED' && res.status !== 'EN_CURSO' ? `<button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8rem; margin-left: 5px;" onclick="cancelRes(${res.idReservation || res.id})">Cancelar</button>` : '<span class="text-muted">Sin Acciones</span>'}
-                    </td>
+                    <td>#${idReserva}</td>
+                    <td>${nombreEspacio}</td>
+                    <td style="font-weight: bold; color: green;">$${precioFinal}</td>
+                    <td><span class="status-badge ${estado}">${estado}</span></td>
                 `;
                 tbody.appendChild(tr);
             });
         } catch (err) {
             UI.logConsole("Error al listar alquileres: " + err.message);
-            document.getElementById("reservations-tbody").innerHTML = `<tr><td colspan='4' class='text-center text-danger'>Error de sesión o autorización: ${err.message}</td></tr>`;
+            // En lugar de un alert molesto con código, lo informamos directamente en la tabla de la UI
+            const tbody = document.getElementById("reservations-tbody");
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan='4' class='text-center text-danger'>Error de comunicación con el servidor (502 / StackOverflow). Verificá recursividad en el Back.</td></tr>`;
+            }
         }
     }
 

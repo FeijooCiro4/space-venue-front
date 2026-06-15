@@ -113,11 +113,23 @@
                 <h3>Solicitar Nueva Reserva</h3>
                 <p class="endpoint-label">POST /api/reservations</p>
                 <form id="form-create-reservation">
-                    <div class="form-row">
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                         <div class="form-group">
                             <label for="res-space-id">ID de Salón/Espacio</label>
-                            <input type="number" id="res-space-id" required placeholder="Ej: 1">
+                            <input type="number" id="res-space-id" readonly style="background-color: #e9ecef;">
                         </div>
+                        <div class="form-group">
+                            <label for="res-title">Nombre del Evento / Título</label>
+                            <input type="text" id="res-title" required placeholder="Ej: Cumpleaños de 15 de Sofi">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="res-description">Descripción / Detalles del Evento</label>
+                        <textarea id="res-description" required placeholder="Contanos brevemente el uso que le vas a dar al espacio..." rows="2"></textarea>
+                    </div>
+
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                         <div class="form-group">
                             <label for="res-from">Fecha y Hora Desde</label>
                             <input type="datetime-local" id="res-from" required>
@@ -127,7 +139,26 @@
                             <input type="datetime-local" id="res-to" required>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-success">Confirmar Solicitud de Reserva</button>
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="font-weight: bold; margin-bottom: 8px; display: block;">Servicios Opcionales Disponibles:</label>
+                        <div id="available-services-checkboxes" style="border: 1px solid #ccc; padding: 12px; border-radius: 6px; background: #f8f9fa; max-height: 150px; overflow-y: auto;">
+                            <p class="text-muted" style="font-size: 0.9rem; margin: 0;">Selecciona un espacio del catálogo para auditar sus servicios.</p>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                        <input type="checkbox" id="res-save-calendar" checked style="width: 18px; height: 18px; cursor: pointer;">
+                        <label for="res-save-calendar" style="cursor: pointer; font-weight: 500;">
+                            ¿Querés agendar el evento automáticamente en tu cuenta personal de Google Calendar?
+                        </label>
+                    </div>
+
+                    <div style="background: #e3f2fd; padding: 12px; border-radius: 6px; margin-bottom: 15px; border-left: 5px solid #2196f3;">
+                        <h4 style="margin: 0; color: #0d47a1;">Precio Total Estimado: <span id="total-price-display">$0.00</span></h4>
+                    </div>
+
+                    <button type="submit" class="btn btn-success" style="width: 100%;">Confirmar Solicitud de Reserva</button>
                 </form>
             </div>
 
@@ -142,8 +173,8 @@
                         <tr>
                             <th>ID Reserva</th>
                             <th>Ubicación / Salón</th>
+                            <th>Precio Final</th>
                             <th>Estado de Gestión</th>
-                            <th>Operaciones de Negocio</th>
                         </tr>
                     </thead>
                     <tbody id="reservations-tbody">
@@ -203,6 +234,13 @@
                     <div class="form-group">
                         <label for="space-buffer">Tiempo de Buffer (Minutos entre reservas)</label>
                         <input type="number" id="space-buffer" min="0" required placeholder="Ej: 15, 30">
+                    </div>
+
+                    <div class="form-group mt-4">
+                        <label><strong>Servicios Adicionales Ofrecidos</strong></label>
+                        <div id="services-container">
+                            </div>
+                        <button type="button" id="btn-add-service" class="btn btn-secondary btn-sm mt-2">+ Agregar Servicio</button>
                     </div>
 
                     <button type="submit" class="btn btn-primary" style="margin-top: 20px;">Dar de Alta Propiedad</button>
