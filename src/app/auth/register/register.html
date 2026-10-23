@@ -1,0 +1,50 @@
+<div class="register-container">
+    <h2>Registro de usuario</h2>
+
+    <form (submit)="onSubmit($event)">
+        <div class="form-group">
+            <label for="firstname">First Name</label>
+            <input type="text" placeholder="First Name" [formField]="formRegister.firstname" />
+        </div>
+        
+        <div class="form-group">
+            <label for="lastname">Last Name</label>
+            <input type="text" placeholder="Last Name" [formField]="formRegister.lastname" />
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" placeholder="Email" [formField]="formRegister.email" />
+        </div>
+
+        <div class="form-group">
+            <label for="phone">Phone</label>
+            <input type="tel" placeholder="Phone" [formField]="formRegister.phone" />
+        </div>
+
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" placeholder="Username" [formField]="formRegister.username" />
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" placeholder="Password" [formField]="formRegister.password" />
+        </div>
+
+        <button type="submit" [disabled]="formRegister().invalid()">Register</button>
+
+        @if (error() != "") {
+            <p class="error">{{error()}}</p>
+        }
+
+        <app-form-error-message [campo]="formRegister.firstname()"></app-form-error-message>
+        <app-form-error-message [campo]="formRegister.lastname()"></app-form-error-message>
+        <app-form-error-message [campo]="formRegister.email()"></app-form-error-message>
+        <app-form-error-message [campo]="formRegister.phone()"></app-form-error-message>
+        <app-form-error-message [campo]="formRegister.username()"></app-form-error-message>
+        <app-form-error-message [campo]="formRegister.password()"></app-form-error-message>
+    </form>
+
+    <p class="registro">¿Ya tenés cuenta? <a routerLink="/login">Iniciá sesión</a></p>
+</div>

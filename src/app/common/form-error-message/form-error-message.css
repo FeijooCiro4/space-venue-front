@@ -1,0 +1,13 @@
+:host {
+    display: block;
+}
+
+.error {
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: #b91c1c;
+}
+
+.error::before {
+    content: "⚠ ";
+}
