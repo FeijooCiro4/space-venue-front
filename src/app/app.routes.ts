@@ -5,7 +5,7 @@ import { Login } from './auth/login/login';
 
 export const routes: Routes = [
     {path: '', redirectTo: 'espacios', pathMatch: 'full'},
-    {path: 'login', component: Login},
+    {path:'login', component: Login},
     {path:'registro', component: Register},
     {path:'**', component: NotFound}
 ];
