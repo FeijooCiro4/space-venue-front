@@ -11,3 +11,9 @@ export interface UserComplete {
 }
 
 export type CredentialRegister = Omit<UserComplete, 'idUser' | 'isActive' | 'role'>;
+
+export interface consumerOwner{
+    idConsumer: number,
+    firstname: string,
+    lastname: string
+}

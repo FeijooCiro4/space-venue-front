@@ -1,0 +1,13 @@
+.SpaceCard{
+    border: 1px solid black;
+    border-radius: 5px;
+    background-color:cadetblue;
+    max-width: 40vh;
+    max-height: 40vh;
+    margin-top: 10px;
+    text-align: center;
+}
+.SpaceCard:hover{
+    background-color: rgb(81, 154, 156);
+    cursor:pointer;
+}
